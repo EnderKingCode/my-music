@@ -1,6 +1,6 @@
 // Keeps the app itself on the phone so it opens without internet.
 // (Your songs are stored separately inside the app and are never sent anywhere.)
-const CACHE = 'mymusic-v3';
+const CACHE = 'mymusic-v4';
 const FILES = ['./', './index.html', './manifest.webmanifest', './icon-180.png', './icon-192.png', './icon-512.png'];
 self.addEventListener('install', e => {
   e.waitUntil(caches.open(CACHE).then(c => c.addAll(FILES)).then(() => self.skipWaiting()));
