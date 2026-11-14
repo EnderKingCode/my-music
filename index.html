@@ -184,8 +184,7 @@ h2.sec{font-size:22px;font-weight:700;margin:22px 20px 8px;display:flex;justify-
 @keyframes eq{0%,100%{height:25%}50%{height:100%}}
 /* iPhone Home Screen apps: make sure full-screen parts reach the very bottom edge */
 html{background:var(--bg)}
-#app,#player{bottom:auto;height:100vh}
-@supports (height:100lvh){#app,#player{height:100lvh}}
+#app,#player{bottom:auto;height:var(--vh,100%)}
 </style>
 </head>
 <body>
@@ -1287,6 +1286,32 @@ function renderQueue() {
 }
 setInterval(() => { if (P.root?.classList.contains('open') && !audio.paused) updateTime(); }, 250);
 
+
+/* ================= iPhone Home Screen bug: screen stuck too short (black band at the bottom) ================= */
+// iOS sometimes keeps the app's screen height too small (often after the keyboard was open).
+// We keep the app exactly as tall as the screen iOS reports, and when it looks stuck we
+// hide and show the app in one go, which makes iOS measure the screen again.
+let maxH = window.innerHeight;
+function setVH() { document.documentElement.style.setProperty('--vh', window.innerHeight + 'px'); }
+function repairViewport() {
+  maxH = Math.max(maxH, window.innerHeight, (navigator.standalone && window.matchMedia('(orientation: portrait)').matches) ? Math.round(screen.height || 0) : 0);
+  setVH();
+  if (maxH - window.innerHeight <= 4) return;
+  const app = document.getElementById('app'), pl = document.getElementById('player');
+  const pg = top_() && top_().el, keep = pg ? pg.scrollTop : 0;
+  app.style.display = 'none'; pl.style.display = 'none';
+  void app.offsetHeight;
+  app.style.display = ''; pl.style.display = '';
+  if (pg) pg.scrollTop = keep;
+  setVH();
+}
+window.addEventListener('resize', () => { setVH(); if (window.innerHeight > maxH) maxH = window.innerHeight; });
+window.addEventListener('orientationchange', () => { maxH = 0; setTimeout(repairViewport, 300); });
+document.addEventListener('focusout', e => { if (e.target.matches('input')) setTimeout(repairViewport, 150); });
+document.addEventListener('visibilitychange', () => { if (!document.hidden) setTimeout(repairViewport, 150); });
+window.addEventListener('pageshow', () => setTimeout(repairViewport, 150));
+setVH();
+
 /* ================= start ================= */
 async function start() {
   main = $('#main');
@@ -1301,6 +1326,7 @@ async function start() {
   restoreState();
   S.tab = null; switchTab('lib');
   renderNow();
+  setTimeout(repairViewport, 400);
   if ('serviceWorker' in navigator && location.protocol.startsWith('http')) navigator.serviceWorker.register('sw.js').catch(() => { });
 }
 start();
